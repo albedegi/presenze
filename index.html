@@ -1,28 +1,31 @@
 <!DOCTYPE html>
 <html lang="it">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Rilevazione Presenze</title>
-<link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Presenze Aula</title>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
+  <h2>Rilevazione Presenze</h2>
 
-<h1>Rilevazione Presenze in Aula</h1>
-<p>Prima di procedere, clicca il pulsante per verificare di essere vicino al docente.</p>
+  <p id="status">Premi il pulsante per verificare la tua presenza.</p>
+  <button id="verifyBtn">Verifica Bluetooth</button>
 
-<button id="verifyBtn">Verifica Bluetooth</button>
-<p id="status"></p>
+  <form id="presenceForm" style="display:none">
+    <label for="nome">Nome:</label>
+    <input type="text" id="nome" name="nome" required>
 
-<div id="formContainer">
-  <form id="presenceForm" method="POST">
-    <input type="text" name="nome" placeholder="Nome e Cognome" required><br>
-    <input type="text" name="matricola" placeholder="Matricola" required><br>
-    <input type="hidden" name="data" id="data">
+    <label for="cognome">Cognome:</label>
+    <input type="text" id="cognome" name="cognome" required>
+
+    <label for="matricola">Matricola:</label>
+    <input type="text" id="matricola" name="matricola" required>
+
+    <input type="hidden" id="data" name="data">
     <button type="submit">Invia Presenza</button>
   </form>
-</div>
 
-<script src="script.js"></script>
+  <script src="script.js"></script>
 </body>
 </html>
