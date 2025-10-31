@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rilevazione Presenze</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<h1>Rilevazione Presenze in Aula</h1>
+<p>Prima di procedere, clicca il pulsante per verificare di essere vicino al docente.</p>
+
+<button id="verifyBtn">Verifica Bluetooth</button>
+<p id="status"></p>
+
+<div id="formContainer">
+  <form id="presenceForm" method="POST">
+    <input type="text" name="nome" placeholder="Nome e Cognome" required><br>
+    <input type="text" name="matricola" placeholder="Matricola" required><br>
+    <input type="hidden" name="data" id="data">
+    <button type="submit">Invia Presenza</button>
+  </form>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>

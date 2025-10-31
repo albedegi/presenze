@@ -1,0 +1,40 @@
+body {
+  font-family: 'Arial', sans-serif;
+  text-align: center;
+  padding: 2em;
+  background: #f9fafb;
+}
+
+h1 { color: #333; }
+
+button {
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 1em 2em;
+  font-size: 1.1em;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+button:hover { background-color: #0056b3; }
+
+#formContainer {
+  display: none;
+  margin-top: 2em;
+}
+
+input {
+  margin: 0.4em;
+  padding: 0.6em;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  width: 80%;
+  max-width: 300px;
+}
+
+#status {
+  margin-top: 1em;
+  color: #555;
+}
