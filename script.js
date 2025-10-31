@@ -1,5 +1,5 @@
 const TARGET_NAME = "BeaconProf"; // nome Bluetooth del docente
-const SHEET_WEBAPP_URL = "PASTE_HERE_YOUR_SCRIPT_URL"; // URL Apps Script
+const SHEET_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbzF2rMdgE5fRBPSJMZ_yxNP1Nz3sVL_Jxm-rTCltoveXs_JlCxb9E7YH1rW4fCf-CAg/exec"; // URL Apps Script
 
 document.getElementById("verifyBtn").addEventListener("click", async () => {
   const status = document.getElementById("status");
