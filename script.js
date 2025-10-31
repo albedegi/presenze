@@ -1,12 +1,11 @@
 // === CONFIGURAZIONE EDDYSTONE-UID ===
-// UUID servizio Eddystone
 const EDDYSTONE_UUID = 0xFEAA;
 
-// Namespace (10 byte / 20 hex) e Instance (6 byte / 12 hex)
-const NAMESPACE_HEX = '535597e035114f974185';   // tuo namespace
-const INSTANCE_HEX  = '200219821234';           // tua instance
+// Incolla qui i valori come li vedi nell'app (con o senza "0x", con spazi, ecc.)
+const NAMESPACE_HEX = '535597e035114f974185';      // es: '0x53 0x55 0x97 ...' OK
+const INSTANCE_HEX  = '200219821234';              // es: '0x20 0x02 0x19 0x82 0x12 0x34' OK
 
-// URL della tua Web App Apps Script (già pubblicata come "chiunque con il link")
+// URL della tua Web App Apps Script
 const SHEET_WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbzF2rMdgE5fRBPSJMZ_yxNP1Nz3sVL_Jxm-rTCltoveXs_JlCxb9E7YH1rW4fCf-CAg/exec';
 
 // === ELEMENTI UI ===
@@ -20,53 +19,76 @@ const dataInput = document.getElementById('data');
 const setStatus = (m) => { if (statusEl) statusEl.textContent = m; };
 const itNow = () => { try { return new Date().toLocaleString('it-IT'); } catch { return new Date().toISOString(); } };
 
-function hexToBytes(hex) {
-  const clean = hex.replace(/[^0-9a-fA-F]/g, '');
-  if (clean.length % 2 !== 0) throw new Error('Hex non valido');
-  const out = new Uint8Array(clean.length / 2);
-  for (let i = 0; i < out.length; i++) {
-    out[i] = parseInt(clean.substr(i * 2, 2), 16);
+/**
+ * Converte stringhe hex molto flessibili in Uint8Array.
+ * Accetta:
+ *  - "535597e0..." (tutto attaccato)
+ *  - "53 55 97 e0 ..." (con spazi)
+ *  - "0x53 0x55 ..." (con prefisso 0x per ogni byte)
+ *  - misto maiuscole/minuscole
+ * Se expectedBytes è impostato, valida la lunghezza.
+ */
+function parseHexFlexible(input, expectedBytes = null) {
+  if (!input || typeof input !== 'string') throw new Error('Valore hex mancante');
+  // 1) prova formato compatto puro (solo [0-9a-f])
+  const compact = input.replace(/[^0-9a-fA-F]/g, '');
+  const isEven = compact.length % 2 === 0 && compact.length > 0;
+
+  let bytes = [];
+  if (isEven && (expectedBytes === null || compact.length === expectedBytes * 2)) {
+    for (let i = 0; i < compact.length; i += 2) {
+      bytes.push(parseInt(compact.slice(i, i + 2), 16));
+    }
+  } else {
+    // 2) estrai tutte le coppie hex (gestisce "0x.." e spazi)
+    const pairs = [...input.matchAll(/(?:0x)?([0-9a-fA-F]{2})/g)].map(m => m[1]);
+    bytes = pairs.map(p => parseInt(p, 16));
   }
-  return out;
+
+  if (expectedBytes !== null && bytes.length !== expectedBytes) {
+    throw new Error(`Lunghezza errata: attesi ${expectedBytes} byte, trovati ${bytes.length}`);
+  }
+  return new Uint8Array(bytes);
 }
 
-// Costruisce il filtro per Eddystone-UID (namespace + instance)
-function buildEddystoneUidFilter(namespaceHex, instanceHex) {
-  const ns = hexToBytes(namespaceHex);
-  if (ns.length !== 10) throw new Error('Namespace deve essere 10 bytes (20 hex).');
+// Costruisce il filtro per Eddystone-UID (Namespace obbligatorio, Instance opzionale)
+// Frame: 0x00 (UID), 1B TxPower (variabile), 10B Namespace, 6B Instance, 2B RFU
+function buildEddystoneUidFilter(namespaceStr, instanceStr) {
+  const ns = parseHexFlexible(namespaceStr, 10);
+  const inst = (instanceStr && instanceStr.trim().length) ? parseHexFlexible(instanceStr, 6) : null;
 
-  let inst = null;
-  if (instanceHex && instanceHex.trim().length > 0) {
-    inst = hexToBytes(instanceHex);
-    if (inst.length !== 6) throw new Error('Instance deve essere 6 bytes (12 hex).');
-  }
-
-  // Frame type (0x00), TX Power (1 byte variabile), Namespace (10B), Instance (6B)
   const len = 1 + 1 + 10 + (inst ? 6 : 0);
   const dataPrefix = new Uint8Array(len);
   const mask       = new Uint8Array(len);
 
-  dataPrefix[0] = 0x00; // Frame Type UID
-  mask[0]       = 0xFF;
+  // Frame type
+  dataPrefix[0] = 0x00;   // UID frame
+  mask[0]       = 0xFF;   // confronta
 
-  dataPrefix[1] = 0x00; // Tx Power placeholder
-  mask[1]       = 0x00; // ignorato
+  // TxPower (variabile): non confrontare
+  dataPrefix[1] = 0x00;
+  mask[1]       = 0x00;
 
+  // Namespace
   dataPrefix.set(ns, 2);
   mask.set(new Uint8Array(10).fill(0xFF), 2);
 
+  // Instance (se presente)
   if (inst) {
     dataPrefix.set(inst, 12);
     mask.set(new Uint8Array(6).fill(0xFF), 12);
   }
 
+  // Debug (facoltativo)
+  // console.log('dataPrefix', Array.from(dataPrefix).map(b=>b.toString(16).padStart(2,'0')).join(' '));
+  // console.log('mask      ', Array.from(mask).map(b=>b.toString(16).padStart(2,'0')).join(' '));
   return { dataPrefix, mask };
 }
 
 // === VERIFICA BLUETOOTH ===
 async function verifyBluetooth() {
   if (!('bluetooth' in navigator)) {
-    setStatus('⚠️ Il tuo browser non supporta Web Bluetooth. Usa Chrome/Edge su Android o PC.');
+    setStatus('⚠️ Browser non supporta Web Bluetooth. Usa Chrome/Edge su Android o PC.');
     return;
   }
 
@@ -89,14 +111,14 @@ async function verifyBluetooth() {
       return;
     }
 
-    setStatus('✅ Beacon Eddystone corretto rilevato! Sei in aula.');
+    setStatus('✅ Beacon Eddystone corrispondente rilevato! Sei in aula.');
     verifyBtn.style.display = 'none';
     formContainer.style.display = 'block';
     dataInput.value = itNow();
 
   } catch (err) {
     console.error('Errore scansione Eddystone:', err);
-    setStatus('⚠️ Nessun beacon corrispondente trovato o permesso negato. Controlla namespace/instance e riprova.');
+    setStatus('⚠️ Nessun beacon trovato o permesso negato. Controlla Namespace/Instance e che il frame sia Eddystone-UID.');
   }
 }
 
@@ -106,7 +128,7 @@ async function submitPresence(e) {
   const submitBtn = presenceForm.querySelector('button[type="submit"]');
   try {
     if (submitBtn) submitBtn.disabled = true;
-    if (dataInput && !dataInput.value) dataInput.value = itNow();
+    if (!dataInput.value) dataInput.value = itNow();
 
     const params = new URLSearchParams(new FormData(presenceForm));
     await fetch(SHEET_WEBAPP_URL + '?' + params.toString(), { method: 'GET', mode: 'no-cors' });
@@ -120,7 +142,8 @@ async function submitPresence(e) {
     console.error('Errore invio:', err);
     alert('❌ Errore nell’invio. Controlla la connessione e riprova.');
   } finally {
-    if (submitBtn) submitBtn.disabled = false;
+    const submitBtn2 = presenceForm.querySelector('button[type="submit"]');
+    if (submitBtn2) submitBtn2.disabled = false;
   }
 }
 
